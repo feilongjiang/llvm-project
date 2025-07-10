@@ -320,6 +320,7 @@ enum {
   EM_VE = 251,            // NEC SX-Aurora VE
   EM_CSKY = 252,          // C-SKY 32-bit processor
   EM_LOONGARCH = 258,     // LoongArch
+  EM_CPU0 = 999,          // Cpu0
 };
 
 // Object file classes.
@@ -601,6 +602,19 @@ enum {
   ODK_GP_GROUP = 9,   // GP group to use for text/data sections
   ODK_IDENT = 10,     // ID information
   ODK_PAGESIZE = 11   // Page size information
+};
+
+// Cpu0 Specific e_flags
+enum {
+  EF_CPU0_NOREORDER   = 0x00000001, // Don't reorder instructions
+  EF_CPU0_PIC         = 0x00000002, // Position independent code
+  EF_CPU0_ARCH_32     = 0x50000000, // CPU0-32 instruction set per linux not elf.h
+  EF_CPU0_ARCH        = 0xf0000000, // Mask for applying EF_CPU0_ARCH_ variant
+};
+
+// ELF Relocation types for Cpu0
+enum {
+#include "ELFRelocs/Cpu0.def"
 };
 
 // Hexagon-specific e_flags
