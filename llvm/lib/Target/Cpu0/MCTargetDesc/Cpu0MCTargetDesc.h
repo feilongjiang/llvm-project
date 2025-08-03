@@ -18,6 +18,15 @@
 namespace llvm {
 class Target;
 class Triple;
+class MCAsmBackend;
+class MCCodeEmitter;
+class MCContext;
+class MCInstrInfo;
+class MCObjectWriter;
+class MCSubtargetInfo;
+class StringRef;
+
+class raw_ostream;
 
 Target &getTheCpu0Target();
 Target &getTheCpu0elTarget();

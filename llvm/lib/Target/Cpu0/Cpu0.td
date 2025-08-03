@@ -64,6 +64,10 @@ def : Proc<"cpu032II", [FeatureCpu032II]>;
 
 def Cpu0InstrInfo : InstrInfo;
 
+def Cpu0AsmWriter : AsmWriter {
+    int PassSubtarget = 1;
+}
+
 // Whill generate Cpu0GenAsmWrite.inc included by Cpu0InstPrinter.cpp, contents
 // as follows,
 // void Cpu0InstPrinter::printInstruction(const MCInst *MI, raw_ostream &O) {...}
@@ -71,4 +75,5 @@ def Cpu0InstrInfo : InstrInfo;
 def Cpu0 : Target {
     // def Cpu0InstrInfo : InstrInfo as before.
     let InstructionSet = Cpu0InstrInfo;
+    let AssemblyWriters = [Cpu0AsmWriter];
 }
