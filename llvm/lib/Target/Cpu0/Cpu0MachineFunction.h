@@ -27,12 +27,22 @@ namespace llvm {
 class Cpu0FunctionInfo : public MachineFunctionInfo {
 public:
   Cpu0FunctionInfo(MachineFunction &MF)
-      : MF(MF), VarArgsFrameIndex(0), MaxCallFrameSize(0), EmitNOAT(false) {}
+      : MF(MF), VarArgsFrameIndex(0), SRetReturnReg(0), CallsEhReturn(false),
+        CallsEhDwarf(false), MaxCallFrameSize(0), EmitNOAT(false) {}
 
   ~Cpu0FunctionInfo() override;
 
   int getVarArgsFrameIndex() const { return VarArgsFrameIndex; }
   void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
+
+  unsigned getSRetReturnReg() const { return SRetReturnReg; }
+  void setSRetReturnReg(unsigned Reg) { SRetReturnReg = Reg; }
+
+  bool hasByvalArg() const { return HasByValArg; }
+  void setFormalArgInfo(unsigned Size, bool HasByVal) {
+    IncomingArgSize = Size;
+    HasByValArg = HasByVal;
+  }
 
   bool getEmitNOAT() const { return EmitNOAT; }
   void setEmitNOAT() { EmitNOAT = true; }
@@ -42,8 +52,28 @@ private:
 
   MachineFunction &MF;
 
-  /// VarArgsFrameIndex - FrameIndex for start of varargs area.
-  int VarArgsFrameIndex = 0;
+  // Frame index for start of varargs area.
+  int VarArgsFrameIndex;
+
+  // Some subtargets require that sret lowering includes returning the value
+  // of the returned struct in a register. This field holds the virtual
+  // register into which the sret argument is passed.
+  unsigned SRetReturnReg;
+
+  // True if function has a byval argument.
+  bool HasByValArg;
+
+  // Size of incoming argument area.
+  unsigned IncomingArgSize;
+
+  // Whether the function calls llvm.eh.return.
+  bool CallsEhReturn;
+
+  // Whether the function calls llvm.eh.dwarf.
+  bool CallsEhDwarf;
+
+  // Frame objects for spilling eh data registers.
+  int EhDataRegFI[2];
 
   unsigned MaxCallFrameSize;
 

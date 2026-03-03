@@ -163,6 +163,9 @@ def JR      : JumpFR<0x3c, "jr", GPROut>;
 
 def RET     : RetBase<GPROut>;
 
+let isReturn=1, isTerminator=1, hasDelaySlot=1, isBarrier=1, hasCtrlDep=1 in
+  def RetLR : Cpu0Pseudo<(outs), (ins), "", [(Cpu0Ret)]>;
+
 // No Operation Instructions
 let addr=0 in
   def NOP   : FJ<0x00, (outs), (ins), "nop", [], IIAlu>;

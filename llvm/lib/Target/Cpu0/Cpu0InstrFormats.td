@@ -119,3 +119,13 @@ class FJ<bits<8> op, dag outs, dag ins, string asmStr, list<dag> pattern, InstrI
 
   let Inst{23-0} = addr;
 }
+
+//===----------------------------------------------------------------------===//
+// Pseudo Instrucitons Format
+//===----------------------------------------------------------------------===//
+
+class Cpu0Pseudo<dag outs, dag ins, string asmStr, list<dag> pattern>
+  : Cpu0Inst<outs, ins, asmStr, pattern, IIPseudo, Pseudo> {
+  let isCodeGenOnly = 1;
+  let isPseudo = 1;
+}

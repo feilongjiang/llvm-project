@@ -25,7 +25,13 @@ public:
   explicit Cpu0SEInstrInfo(const Cpu0Subtarget &STI);
 
   const Cpu0RegisterInfo &getRegisterInfo() const override;
+
+  bool expandPostRAPseudo(MachineInstr &MI) const override;
+
+private:
+  void expandRetLR(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
 };
+
 } // namespace llvm
 
 #endif // LLVM_LIB_TARGET_CPU0_CPU0SEINSTRINFO_H
