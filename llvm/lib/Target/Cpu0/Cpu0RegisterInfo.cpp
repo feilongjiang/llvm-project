@@ -69,7 +69,76 @@ BitVector Cpu0RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 // direct reference.
 void Cpu0RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                            int SPAdj, unsigned FIOperandNum,
-                                           RegScavenger *RS) const {}
+                                           RegScavenger *RS) const {
+  MachineInstr &MI = *II;
+  MachineFunction &MF = *MI.getParent()->getParent();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  Cpu0FunctionInfo *Cpu0FI = MF.getInfo<Cpu0FunctionInfo>();
+
+  unsigned i = 0;
+  while (!MI.getOperand(i).isFI()) {
+    ++i;
+    assert(i < MI.getNumOperands() && "Instr doesn't have FrameIndex operand!");
+  }
+
+  LLVM_DEBUG(errs() << "\nFunction : " << MF.getFunction().getName() << "\n";
+             errs() << "<--------->\n " << MI);
+
+  int FrameIndex = MI.getOperand(i).getIndex();
+  uint64_t StackSize = MF.getFrameInfo().getStackSize();
+  int64_t spOffset = MF.getFrameInfo().getObjectOffset(FrameIndex);
+
+  LLVM_DEBUG(errs() << "FrameIndex: " << FrameIndex << "\n"
+                    << "spOffset: " << spOffset << "\n"
+                    << "StackSize: " << StackSize << "\n");
+
+  const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
+  int MinCSFI = 0;
+  int MaxCSFI = -1;
+
+  if (CSI.size()) {
+    MinCSFI = CSI[0].getFrameIdx();
+    MaxCSFI = CSI[CSI.size() - 1].getFrameIdx();
+  }
+
+  // The following stack frame objects are always referenced relative to $sp:
+  // 1. Outgoing arguments.
+  // 2. Pointer to dynamically allocated stack space.
+  // 3. Locations for callee-saved registers.
+  // Everything else is referenced relative to whatever register
+  // getFrameRegister() returns.
+  unsigned FrameReg;
+
+  FrameReg = Cpu0::SP;
+
+  // Calculate final offset.
+  // - There is no need to change the offset if the frame object is one of the
+  //   following: an outgoing argument, pointer to a dynamically allocated
+  //   stack space or a $gp restore location,
+  //- If the frame object is any of the following, its offset must be adjusted
+  //  by adding the size of the stack:
+  //  incoming argument, callee-saved register location or local variable.
+  int64_t Offset;
+  Offset = spOffset + (int64_t)StackSize;
+
+  Offset += MI.getOperand(i + 1).getImm();
+
+  LLVM_DEBUG(errs() << "Offset    : " << Offset << "\n"
+                    << "<------------>\n");
+
+  // If MI is not a debug value, make sure Offset fits in the 16-bit immediate
+  // field. if (!MI.isDebugValue() && !isInt<16>(Offset)) {
+  //   errs() << "!!!ERROR!!! Not support large frame over 16-bit at this
+  //   point.\n"; assert(0 && "!MI.isDebugValue() && !isInt<16>(Offset)");
+  // }
+
+  if (!MI.isDebugValue() && !isInt<16>(Offset)) {
+    assert("(!MI.isDebugValue() && !isInt<16>(Offset))");
+  }
+
+  MI.getOperand(i).ChangeToRegister(FrameReg, false);
+  MI.getOperand(i + 1).ChangeToImmediate(Offset);
+}
 
 bool Cpu0RegisterInfo::requiresRegisterScavenging(
     const MachineFunction &MF) const {

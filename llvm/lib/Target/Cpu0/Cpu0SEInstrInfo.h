@@ -28,6 +28,29 @@ public:
 
   bool expandPostRAPseudo(MachineInstr &MI) const override;
 
+  // Adjust SP by Amount bytes.
+  void adjustStackPtr(unsigned SP, int64_t Amount, MachineBasicBlock &MBB,
+                      MachineBasicBlock::iterator I) const override;
+
+  // Emit a seriers of instructions to laod an immediate. If NewImm is a
+  // non-NULL parameter, the last instruction is not emitted, but instead
+  // its immediate operand is returned in NewImm.
+  unsigned loadImmediate(int64_t Imm, MachineBasicBlock &MBB,
+                         MachineBasicBlock::iterator II, const DebugLoc &DL,
+                         unsigned *NewImm) const;
+
+  void storeRegToStack(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
+                       Register SrcReg, bool isKill, int FrameIndex,
+                       const TargetRegisterClass *RC,
+                       const TargetRegisterInfo *TRI,
+                       int64_t Offset) const override;
+
+  void loadRegFromStack(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
+                        Register DestReg, int FrameIndex,
+                        const TargetRegisterClass *RC,
+                        const TargetRegisterInfo *TRI,
+                        int64_t Offset) const override;
+
 private:
   void expandRetLR(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
 };

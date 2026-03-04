@@ -47,6 +47,13 @@ def simm16 : Operand<i32> {
   let DecoderMethod = "DecodeSimm16";
 }
 
+def shamt : Operand<i32>;
+
+// Unsigned Operand
+def uimm16 : Operand<i32> {
+  let PrintMethod = "printUnsignedImm";
+}
+
 // Address Operand
 def mem : Operand<iPTR> {
   let PrintMethod   = "printMemOperand";
@@ -57,6 +64,32 @@ def mem : Operand<iPTR> {
 // Node immediate fits as 16-bit sign extended on target immediate.
 // e.g. addi, andi
 def immSExt16 : PatLeaf<(imm), [{ return isInt<16>(N->getSExtValue()); }]>;
+
+// Get the lower 16 bits.
+def LO16 : SDNodeXForm<imm, [{ return getImm(N, N->getZExtValue() & 0xffff); }]>;
+
+// Get the higher 16 bits.
+def HI16 : SDNodeXForm<imm, [{ return getImm(N, (N->getZExtValue() >> 16) & 0xffff); }]>;
+
+// Node immediate fits as 16-bit zero extended on target immediate.
+// The LO16 param means that only the lower 16 bits of the node
+// immediate are caught.
+def immZExt16 : PatLeaf<(imm), [{
+  if (N->getValueType(0) == MVT::i32) {
+    return (uint32_t)N->getZExtValue() == (unsigned short)N->getZExtValue();
+  } else {
+    return (uint64_t)N->getZExtValue() == (unsigned short)N->getZExtValue();
+  }
+}], LO16>;
+
+// Immediate can be loaded with LUi (32-bit int with lower 16-bit cleared).
+def immLow16Zero : PatLeaf<(imm), [{
+  int64_t Val = N->getSExtValue();
+  return isInt<32>(Val) && !(Val & 0xffff);
+}]>;
+
+// shamt field must fit in 5 bits.
+def immZExt5 : ImmLeaf<i32, [{ return Imm == (Imm & 0x1f); }]>;
 
 // Cpu0 Address Mode! SDNode frameindex could posibily be a match since
 // load and store instructions from stack used it.
@@ -93,6 +126,38 @@ class ArithLogicI<bits<8> op, string instrAsm, SDNode opNode,
   : FL<op, (outs GPROut:$ra), (ins regClass:$rb, od:$imm16),
        !strconcat(instrAsm, "\t$ra, $rb, $imm16"),
        [(set GPROut:$ra, (opNode regClass:$rb, immType:$imm16))], IIAlu> {
+  let isReMaterializable = 1;
+}
+
+// Arithmetic and logical instructions with 3 register operands.
+class ArithLogicR<bits<8> op, string instrAsm, SDNode opNode,
+                  InstrItinClass itin, RegisterClass RC, bit isComm = 0>
+  : FA<op, (outs GPROut:$ra), (ins RC:$rb, RC:$rc),
+       !strconcat(instrAsm, "\t$ra, $rb, $rc"),
+       [(set GPROut:$ra, (opNode RC:$rb, RC:$rc))], itin> {
+  let shamt = 0;
+  let isCommutable = isComm;  // e.g. add rb rc = add rc rb
+  let isReMaterializable = 1;
+}
+
+// Shifts
+class shift_rotate_imm<bits<8> op, bits<4> isRotate, string instrAsm,
+                       SDNode opNode, PatFrag PF, Operand ImmOpnd,
+                       RegisterClass RC>
+  : FA<op, (outs GPROut:$ra), (ins RC:$rb, ImmOpnd:$shamt),
+       !strconcat(instrAsm, "\t$ra, $rb, $shamt"),
+       [(set GPROut:$ra, (opNode RC:$rb, PF:$shamt))], IIAlu> {
+  let rc = 0;
+}
+
+// 32-bit shift instructions.
+class shift_rotate_imm32<bits<8> op, bits<4> isRotate, string instrAsm, SDNode opNode>
+  : shift_rotate_imm<op, isRotate, instrAsm, opNode, immZExt5, shamt, CPURegs>;
+
+class LoadUpper<bits<8> op, string Asm, RegisterClass RC, Operand Imm>
+  : FL<op, (outs RC:$ra), (ins Imm:$imm16),
+       !strconcat(Asm, "\t$ra, $imm16"), [], IIAlu> {
+  let rb = 0;
   let isReMaterializable = 1;
 }
 
@@ -145,6 +210,9 @@ class RetBase<RegisterClass regClass> : JumpFR<0x3c, "ret", regClass> {
   let hasExtraSrcRegAllocReq = 1;
 }
 
+class Cpu0InstAlias<string Asm, dag Result, bit Emit = 0b1>
+  : InstAlias<Asm, Result, Emit>;
+
 //===----------------------------------------------------------------------===//
 // Instruction definition
 //===----------------------------------------------------------------------===//
@@ -155,10 +223,19 @@ def ST   : StoreM32<0x02, "st", store_a>;
 
 // Arithmetic Instructions (ALU Immediate)
 def ADDiu : ArithLogicI<0x09, "addiu", add, simm16, immSExt16, CPURegs>;
+def ORi   : ArithLogicI<0x0d, "ori", or, uimm16, immZExt16, CPURegs>;
+
+def LUi   : LoadUpper<0x0f, "lui", GPROut, uimm16>;
 
 // Arithmetic Instrucitons (3-Operand, R-Type)
+let Predicates = [DisableOverFlow] in {
+  def ADDu  : ArithLogicR<0x11, "addu", add, IIAlu, CPURegs, 1>;
+}
 
 // Shift Instrucitons
+def SHL     : shift_rotate_imm32<0x1e, 0x00, "shl", shl>;
+
+// Jump Instrucitons
 def JR      : JumpFR<0x3c, "jr", GPROut>;
 
 def RET     : RetBase<GPROut>;
@@ -176,3 +253,14 @@ let addr=0 in
 
 // Small Immediates
 def : Pat<(i32 immSExt16:$in), (ADDiu ZERO, imm:$in)>;
+def : Pat<(i32 immZExt16:$in), (ORi ZERO, imm:$in)>;
+def : Pat<(i32 immLow16Zero:$in), (LUi (HI16 imm:$in))>;
+
+// Arbitrary immediates
+def : Pat<(i32 imm:$imm), (ORi (LUi (HI16 imm:$imm)), (LO16 imm:$imm))>;
+
+//===----------------------------------------------------------------------===//
+// Instruction aliases
+//===----------------------------------------------------------------------===//
+
+def : Cpu0InstAlias<"move $dst, $src", (ADDu GPROut:$dst, GPROut:$src, ZERO), 1>;
