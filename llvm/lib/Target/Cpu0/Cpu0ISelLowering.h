@@ -84,6 +84,8 @@ public:
   //  DAG node.
   const char *getTargetNodeName(unsigned Opcode) const override;
 
+  SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
+
 protected:
   /// ByValArgInfo - ByVal argument information.
   struct ByValArgInfo {

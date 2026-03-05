@@ -39,6 +39,10 @@ public:
                          MachineBasicBlock::iterator II, const DebugLoc &DL,
                          unsigned *NewImm) const;
 
+  void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
+                   const DebugLoc &DL, MCRegister DestReg, MCRegister SrcReg,
+                   bool KillSrc) const override;
+
   void storeRegToStack(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
                        Register SrcReg, bool isKill, int FrameIndex,
                        const TargetRegisterClass *RC,
