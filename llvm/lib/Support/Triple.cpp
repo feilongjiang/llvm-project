@@ -1742,6 +1742,7 @@ bool Triple::isLittleEndian() const {
   case Triple::avr:
   case Triple::bpfel:
   case Triple::csky:
+  case Triple::cpu0el:
   case Triple::dxil:
   case Triple::hexagon:
   case Triple::hsail64:
