@@ -28,7 +28,8 @@ class Cpu0FunctionInfo : public MachineFunctionInfo {
 public:
   Cpu0FunctionInfo(MachineFunction &MF)
       : MF(MF), VarArgsFrameIndex(0), SRetReturnReg(0), CallsEhReturn(false),
-        CallsEhDwarf(false), MaxCallFrameSize(0), EmitNOAT(false) {}
+        CallsEhDwarf(false), GlobalBaseReg(0), GPFI(0), MaxCallFrameSize(0),
+        EmitNOAT(false) {}
 
   ~Cpu0FunctionInfo() override;
 
@@ -61,6 +62,10 @@ public:
   bool getEmitNOAT() const { return EmitNOAT; }
   void setEmitNOAT() { EmitNOAT = true; }
 
+  bool globalBaseRegFixed() const;
+  bool globalBaseRegSet() const;
+  unsigned getGlobalBaseReg();
+
 private:
   virtual void anchor();
 
@@ -88,6 +93,13 @@ private:
 
   // Frame objects for spilling eh data registers.
   int EhDataRegFI[2];
+
+  // Keeps track of the virtual register initialized for
+  // use as the global base register. This is used for PIC in some PIC
+  // relocation models.
+  unsigned GlobalBaseReg;
+
+  int GPFI; // Index of the frame object for restoring $gp
 
   unsigned MaxCallFrameSize;
 

@@ -27,6 +27,15 @@ def Cpu0Ret : SDNode<"Cpu0ISD::Ret", SDTNone,
 def Cpu0DivRem  : SDNode<"Cpu0ISD::DivRem",  SDT_Cpu0DivRem, [SDNPOutGlue]>;
 def Cpu0DivRemU : SDNode<"Cpu0ISD::DivRemU", SDT_Cpu0DivRem, [SDNPOutGlue]>;
 
+// Hi and Lo nodes are used to handle global addresses. Used on
+// Cpu0ISelLowering to lower stuff loke GlobalAddress, ExternalSymbol
+// static model. (nothing to do with Cpu0 Registers Hi and Lo)
+def Cpu0Hi      : SDNode<"Cpu0ISD::Hi",      SDTIntUnaryOp>;
+def Cpu0Lo      : SDNode<"Cpu0ISD::Lo",      SDTIntUnaryOp>;
+def Cpu0GPRel   : SDNode<"Cpu0ISD::GPRel",   SDTIntUnaryOp>;
+
+def Cpu0Wrapper : SDNode<"Cpu0ISD::Wrapper", SDTIntBinOp>;
+
 //===----------------------------------------------------------------------===//
 // Cpu0 Instruction Predicate Definitions
 //===----------------------------------------------------------------------===//
@@ -35,6 +44,8 @@ def DisableOverFlow : Predicate<"Subtarget->disableOverflow()">;
 
 def HasCmp          : Predicate<"Subtarget->hasCmp()">;
 def HasSlt          : Predicate<"Subtarget->hasSlt()">;
+
+def RelocPIC        : Predicate<"TM.getRelocationModel() == Reloc::PIC_">;
 
 //===----------------------------------------------------------------------===//
 // Instruction format superclass
@@ -554,6 +565,22 @@ let Predicates = [HasCmp] in {
   defm : SetgtPatsCmp<CPURegs>;
   defm : SetgePatsCmp<CPURegs>;
 }
+
+// hi/lo relocs
+def : Pat<(Cpu0Hi tglobaladdr:$in), (LUi tglobaladdr:$in)>;
+def : Pat<(Cpu0Lo tglobaladdr:$in), (ORi ZERO, tglobaladdr:$in)>;
+def : Pat<(add CPURegs:$hi, (Cpu0Lo tglobaladdr:$lo)),
+          (ORi CPURegs:$hi, tglobaladdr:$lo)>;
+
+// gp_rel relocs
+def : Pat<(add CPURegs:$gp, (Cpu0GPRel tglobaladdr:$in)),
+          (ORi CPURegs:$gp, tglobaladdr:$in)>;
+
+// wrapper_pic
+class WrapperPat<SDNode node, Instruction ORiOp, RegisterClass RC>
+  : Pat<(Cpu0Wrapper RC:$gp, node:$in),
+        (ORiOp RC:$gp, node:$in)>;
+def : WrapperPat<tglobaladdr, ORi, GPROut>;
 
 //===----------------------------------------------------------------------===//
 // Instruction aliases

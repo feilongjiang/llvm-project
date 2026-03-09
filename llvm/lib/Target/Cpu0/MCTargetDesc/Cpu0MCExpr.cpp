@@ -27,6 +27,14 @@ const Cpu0MCExpr *Cpu0MCExpr::create(Cpu0MCExpr::Cpu0ExprKind Kind,
   return new (Ctx) Cpu0MCExpr(Kind, Expr);
 }
 
+const Cpu0MCExpr *Cpu0MCExpr::create(const MCSymbol *Symbol,
+                                     Cpu0MCExpr::Cpu0ExprKind Kind,
+                                     MCContext &Ctx) {
+  const MCSymbolRefExpr *MCSym =
+      MCSymbolRefExpr::create(Symbol, MCSymbolRefExpr::VK_None, Ctx);
+  return new (Ctx) Cpu0MCExpr(Kind, MCSym);
+}
+
 const Cpu0MCExpr *Cpu0MCExpr::createGpOff(Cpu0MCExpr::Cpu0ExprKind Kind,
                                           const MCExpr *Expr, MCContext &Ctx) {
   return create(Kind, create(CEK_None, create(CEK_GPREL, Expr, Ctx), Ctx), Ctx);

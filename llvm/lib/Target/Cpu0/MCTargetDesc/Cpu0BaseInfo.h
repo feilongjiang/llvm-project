@@ -39,6 +39,10 @@ enum TOF {
   /// can only be present in call instructions.
   MO_GOT_CALL,
 
+  /// MO_GOT - Represents the offset into the global offset table at which
+  /// the address the relocation entry symbol resides during execution.
+  MO_GOT,
+
   /// MO_GPREL - Represents the offset from the current gp value to be used
   /// for the relocatable object file being produced.
   MO_GPREL,

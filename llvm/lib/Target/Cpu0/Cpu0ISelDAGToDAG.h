@@ -41,6 +41,8 @@ public:
   bool runOnMachineFunction(MachineFunction &MF) override;
 
 protected:
+  SDNode *getGlobalBaseReg();
+
   /// Keep a pointer to the Cpu0Subtarget around so that we can make the right
   /// decision when generating code for different targets.
   const Cpu0Subtarget *Subtarget;

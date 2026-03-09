@@ -25,6 +25,8 @@
 #define GET_SUBTARGETINFO_HEADER
 #include "Cpu0GenSubtargetInfo.inc"
 
+extern bool Cpu0ReserveGP;
+extern bool Cpu0NoCpload;
 namespace llvm {
 class StringRef;
 class Cpu0TargetMachine;
@@ -52,6 +54,9 @@ protected:
 
   // HasSlt - slt instructions
   bool HasSlt;
+
+  // UseSmallSection - Small section is used.
+  bool UseSmallSection;
 
   InstrItineraryData InstrItins;
 
@@ -89,6 +94,7 @@ public:
   bool disableOverflow() const { return !EnableOverflow; }
   bool hasCmp() const { return HasCmp; }
   bool hasSlt() const { return HasSlt; }
+  bool useSmallSection() const { return UseSmallSection; }
 
   bool abiUsesSoftFloat() const;
 

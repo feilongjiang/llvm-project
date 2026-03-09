@@ -59,6 +59,13 @@ BitVector Cpu0RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
     Reserved.set(ReservedCPURegs[I]);
   }
 
+#ifdef ENABLE_GPRESTORE
+  const Cpu0FunctionInfo &Cpu0FI = MF.getInfo<Cpu0FunctionInfo>();
+  // Reserve GP if globalBaseRegFixed()
+  if (Cpu0FI->globalBaseRegFixed())
+#endif
+    Reserved.set(Cpu0::GP);
+
   return Reserved;
 }
 

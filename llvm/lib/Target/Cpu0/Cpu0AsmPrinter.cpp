@@ -199,15 +199,32 @@ void Cpu0AsmPrinter::emitFunctionBodyStart() {
 
   emitFrameDirective();
 
+  bool EmitCPLoad = (MF->getTarget().getRelocationModel() == Reloc::PIC_) &&
+                    Cpu0FI->globalBaseRegSet() && Cpu0FI->globalBaseRegFixed();
+  if (Cpu0NoCpload) {
+    EmitCPLoad = false;
+  }
+
   if (OutStreamer->hasRawTextSupport()) {
     SmallString<128> Str;
     raw_svector_ostream OS(Str);
     printSavedRegsBitmask(OS);
     OutStreamer->emitRawText(OS.str());
     OutStreamer->emitRawText("\t.set\tnoreorder");
+    // Emit .cpload directive if needed.
+    if (EmitCPLoad) {
+      OutStreamer->emitRawText("\t.cpload\t$t9");
+    }
     OutStreamer->emitRawText("\t.set\tnomacro");
     if (Cpu0FI->getEmitNOAT()) {
       OutStreamer->emitRawText("\t.set\tnoat");
+    }
+  } else if (EmitCPLoad) {
+    SmallVector<MCInst, 4> MCInsts;
+    MCInstLowering.LowerCPLOAD(MCInsts);
+    for (SmallVector<MCInst, 4>::iterator I = MCInsts.begin();
+         I != MCInsts.end(); ++I) {
+      OutStreamer->emitInstruction(*I, getSubtargetInfo());
     }
   }
 }
