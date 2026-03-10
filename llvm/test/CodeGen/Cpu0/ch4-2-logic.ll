@@ -64,11 +64,11 @@ entry:
   ret i32 %res
 }
 
-; Test 5: Logical NOT (boolean) — icmp eq to zero generates xor + sltiu + andi.
-; The zero is materialized in a register, then xor'd with the value.
+; Test 5: Logical NOT (boolean) — icmp eq to zero generates xor + sltiu.
+; With setBooleanContents(ZeroOrOneBooleanContent), sltiu already produces 0/1
+; so the andi mask is optimized away.
 ; CHECK-LABEL: test_logical_not:
 ; CHECK:       sltiu   $r{{[0-9]+}}, $r{{[0-9]+}}, 1
-; CHECK:       andi    $r{{[0-9]+}}, $r{{[0-9]+}}, 1
 ; CHECK:       ret     $lr
 define i32 @test_logical_not() nounwind {
 entry:

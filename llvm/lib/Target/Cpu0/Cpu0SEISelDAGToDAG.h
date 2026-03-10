@@ -30,6 +30,9 @@ private:
 
   void processFunctionAfterISel(MachineFunction &MF) override;
 
+  void selectAddESubE(unsigned MOp, SDValue InFlag, SDValue CmpLHS,
+                      const SDLoc &DL, SDNode *Node) const;
+
   std::pair<SDNode *, SDNode *> selectMULT(SDNode *N, unsigned Opc,
                                            const SDLoc &DL, EVT Ty, bool HasLo,
                                            bool HasHi);

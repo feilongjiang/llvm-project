@@ -88,6 +88,18 @@ Cpu0TargetLowering::Cpu0TargetLowering(const Cpu0TargetMachine &TM,
   // It will emit .align 2 later
   setMinFunctionAlignment(Align(2));
 
+  // Cpu0 does not have i1 type, so use i32 for
+  // setcc operations results (slt, sgt, ...).
+  setBooleanContents(ZeroOrOneBooleanContent);
+  setBooleanVectorContents(ZeroOrNegativeOneBooleanContent);
+
+  // Load extented operations for i1 types must be promoted
+  for (MVT VT : MVT::integer_valuetypes()) {
+    setLoadExtAction(ISD::EXTLOAD, VT, MVT::i1, Promote);
+    setLoadExtAction(ISD::ZEXTLOAD, VT, MVT::i1, Promote);
+    setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i1, Promote);
+  }
+
   setOperationAction(ISD::SDIV, MVT::i32, Expand);
   setOperationAction(ISD::SREM, MVT::i32, Expand);
   setOperationAction(ISD::UDIV, MVT::i32, Expand);
@@ -101,6 +113,16 @@ Cpu0TargetLowering::Cpu0TargetLowering(const Cpu0TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::Other, Expand);
 
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
+
+  setOperationAction(ISD::CTPOP, MVT::i32, Expand);
+  setOperationAction(ISD::CTTZ, MVT::i32, Expand);
+  setOperationAction(ISD::CTTZ_ZERO_UNDEF, MVT::i32, Expand);
+  setOperationAction(ISD::CTLZ_ZERO_UNDEF, MVT::i32, Expand);
+
+  // Handle i64 shl
+  setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
+  setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
+  setOperationAction(ISD::SRL_PARTS, MVT::i32, Expand);
 
   setTargetDAGCombine(ISD::SDIVREM);
   setTargetDAGCombine(ISD::UDIVREM);
@@ -165,6 +187,14 @@ SDValue Cpu0TargetLowering::PerformDAGCombine(SDNode *N,
   return SDValue();
 }
 
+EVT Cpu0TargetLowering::getSetCCResultType(const DataLayout &DL,
+                                           LLVMContext &Context, EVT VT) const {
+  if (!VT.isVector()) {
+    return MVT::i32;
+  }
+  return VT.changeVectorElementTypeToInteger();
+}
+
 SDValue Cpu0TargetLowering::LowerOperation(SDValue Op,
                                            SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
@@ -222,6 +252,12 @@ SDValue Cpu0TargetLowering::lowerGlobalAddress(SDValue Op,
 
   return getAddrGlobal(N, Ty, DAG, Cpu0II::MO_GOT, DAG.getEntryNode(),
                        MachinePointerInfo::getGOT(DAG.getMachineFunction()));
+}
+
+bool Cpu0TargetLowering::isOffsetFoldingLegal(
+    const GlobalAddressSDNode *GA) const {
+  // The Cpu0 target isn't yet aware of offsets.
+  return false;
 }
 
 #include "Cpu0GenCallingConv.inc"

@@ -78,6 +78,12 @@ def mem : Operand<iPTR> {
   let EncoderMethod = "getMemEncoding";
 }
 
+def mem_ea : Operand<iPTR> {
+  let PrintMethod = "printMemOperandEA";
+  let MIOperandInfo = (ops GPROut, simm16);
+  let EncoderMethod = "getMemEncoding";
+}
+
 // Node immediate fits as 16-bit sign extended on target immediate.
 // e.g. addi, andi
 def immSExt16 : PatLeaf<(imm), [{ return isInt<16>(N->getSExtValue()); }]>;
@@ -132,6 +138,12 @@ class AlignedStore<PatFrag Node>
 // Load/Store PatFrags
 def load_a  : AlignedLoad<load>;
 def store_a : AlignedStore<store>;
+
+def sextloadi16_a : AlignedLoad<sextloadi16>;
+def zextloadi16_a : AlignedLoad<zextloadi16>;
+def extloadi16_a  : AlignedLoad<extloadi16>;
+
+def truncstorei16_a : AlignedStore<truncstorei16>;
 
 //===----------------------------------------------------------------------===//
 // Instructions specific format
@@ -347,6 +359,27 @@ class RetBase<RegisterClass regClass> : JumpFR<0x3c, "ret", regClass> {
   let hasExtraSrcRegAllocReq = 1;
 }
 
+// Count Leading Zeros/Ones
+class CountLeading0<bits<8> op, string instr_asm, RegisterClass RC>
+  : FA<op, (outs GPROut:$ra), (ins RC:$rb),
+       !strconcat(instr_asm, "\t$ra, $rb"),
+       [(set GPROut:$ra, (ctlz RC:$rb))], IICLZ> {
+  let rc = 0;
+  let shamt = 0;
+}
+
+class CountLeading1<bits<8> op, string instr_asm, RegisterClass RC>
+  : FA<op, (outs GPROut:$ra), (ins RC:$rb),
+       !strconcat(instr_asm, "\t$ra, $rb"),
+       [(set GPROut:$ra, (ctlz (not RC:$rb)))], IICLO> {
+  let rc = 0;
+  let shamt = 0;
+}
+
+class EffectiveAddress<string instr_asm, RegisterClass RC, Operand Mem>
+  : FMem<0x09, (outs RC:$ra), (ins Mem:$addr),
+         instr_asm, [(set RC:$ra, addr:$addr)], IIAlu>;
+
 class Cpu0InstAlias<string Asm, dag Result, bit Emit = 0b1>
   : InstAlias<Asm, Result, Emit>;
 
@@ -357,6 +390,12 @@ class Cpu0InstAlias<string Asm, dag Result, bit Emit = 0b1>
 // aligned
 def LD   : LoadM32<0x01,  "ld", load_a>;
 def ST   : StoreM32<0x02, "st", store_a>;
+def LB   : LoadM32<0x03,  "lb",  sextloadi8>;
+def LBu  : LoadM32<0x04,  "lbu", zextloadi8>;
+def SB   : StoreM32<0x05, "sb",  truncstorei8>;
+def LH   : LoadM32<0x06,  "lh",  sextloadi16_a>;
+def LHu  : LoadM32<0x07,  "lhu", zextloadi16_a>;
+def SH   : StoreM32<0x08, "sh",  truncstorei16_a>;
 
 // Arithmetic Instructions (ALU Immediate)
 def ADDiu : ArithLogicI<0x09, "addiu", add, simm16, immSExt16, CPURegs>;
@@ -415,6 +454,18 @@ def MTC0    : MoveToC0<0x51, "mtc0", CPURegs>;
 
 def C0MOVE  : C0Move<0x52, "c0mov">;
 
+/// Count Leading
+def CLZ : CountLeading0<0x15, "clz", CPURegs>;
+def CLO : CountLeading1<0x16, "clo", CPURegs>;
+
+// FrameIndexes are legalized when they are operands from load/store
+// instructions. The same not happens for stack address copies, so an
+// add op with mem ComplexPattern is used and the stack address copy
+// can be matched. It's similar to Sparc LEA_ADDRi
+def LEA_ADDiu : EffectiveAddress<"addiu\t$ra, $addr", CPURegs, mem_ea> {
+  let isCodeGenOnly = 1;
+}
+
 // Compare Instructions
 let Predicates = [HasCmp] in {
   def CMP   : CmpInstr<0x2a, "cmp", IIAlu, CPURegs, SR, 0>;
@@ -451,6 +502,12 @@ def : Pat<(i32 immLow16Zero:$in), (LUi (HI16 imm:$in))>;
 
 // Arbitrary immediates
 def : Pat<(i32 imm:$imm), (ORi (LUi (HI16 imm:$imm)), (LO16 imm:$imm))>;
+
+// Extend loads
+def : Pat<(i32 (extloadi1  addr:$src)), (LBu addr:$src)>;
+def : Pat<(i32 (extloadi8  addr:$src)), (LBu addr:$src)>;
+def : Pat<(i32 (extloadi16 addr:$src)), (LHu addr:$src)>;
+def : Pat<(i32 (extloadi16_a addr:$src)), (LHu addr:$src)>;
 
 // 1's complement of in, ex. not(0xf000000f) == 0x0ffffff0
 def : Pat<(not CPURegs:$in), (NOR CPURegs:$in, ZERO)>;

@@ -81,3 +81,16 @@ void Cpu0InstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   printOperand(MI, OpNo, STI, O);
   O << ")";
 }
+
+// The DAG data node, mem_ea of Cpu0InstrInfo.td, cannot be disabled by
+// ch7_1, only opcode node can be disabled.
+void Cpu0InstPrinter::printMemOperandEA(const MCInst *MI, int opNum,
+                                        const MCSubtargetInfo &STI,
+                                        raw_ostream &O) {
+  // when using stack locations for not load/store instructions
+  // print the same way as all normal 3 operand instructions.
+  printOperand(MI, opNum, STI, O);
+  O << ", ";
+  printOperand(MI, opNum + 1, STI, O);
+  return;
+}
