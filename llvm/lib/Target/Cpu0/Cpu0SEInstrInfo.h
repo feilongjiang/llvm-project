@@ -57,6 +57,8 @@ public:
 
 private:
   void expandRetLR(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
+
+  unsigned getOppositeBranchOpc(unsigned Opc) const override;
 };
 
 } // namespace llvm

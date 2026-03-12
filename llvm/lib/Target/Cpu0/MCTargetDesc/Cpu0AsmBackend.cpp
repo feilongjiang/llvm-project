@@ -51,6 +51,13 @@ static unsigned adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
     // Get the higher 16-bits. Also add 1 if bits 15 is 1
     Value = (Value >> 16) & 0xffff;
     break;
+  case Cpu0::fixup_Cpu0_PC16:
+  case Cpu0::fixup_Cpu0_PC24:
+    // So far we are only using this type for branches and jump.
+    // For branches we start 1 instruction after the branch
+    // so the displacement will be one instruction size less.
+    Value -= 4;
+    break;
   }
 
   return Value;
@@ -122,9 +129,14 @@ Cpu0AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
       // Cpu0FixupKinds.h.
       //
       // name                      offset   bits  flags
-      {"fixup_Cpu0_32", 0, 32, 0},      {"fixup_Cpu0_HI16", 0, 16, 0},
-      {"fixup_Cpu0_LO16", 0, 16, 0},    {"fixup_Cpu0_GPREL16", 0, 16, 0},
-      {"fixup_Cpu0_GOT", 0, 16, 0},     {"fixup_Cpu0_GOT_HI16", 0, 16, 0},
+      {"fixup_Cpu0_32", 0, 32, 0},
+      {"fixup_Cpu0_HI16", 0, 16, 0},
+      {"fixup_Cpu0_LO16", 0, 16, 0},
+      {"fixup_Cpu0_GPREL16", 0, 16, 0},
+      {"fixup_Cpu0_GOT", 0, 16, 0},
+      {"fixup_Cpu0_PC16", 0, 16, MCFixupKindInfo::FKF_IsPCRel},
+      {"fixup_Cpu0_PC24", 0, 24, JSUBReloRec},
+      {"fixup_Cpu0_GOT_HI16", 0, 16, 0},
       {"fixup_Cpu0_GOT_LO16", 0, 16, 0}};
 
   if (Kind < FirstTargetFixupKind) {

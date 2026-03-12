@@ -82,5 +82,3 @@ def HILO   : RegisterClass<"Cpu0", [i32], 32, (add HI, LO)>;
 
 // @Co-processor 0 Registers class
 def C0Regs : RegisterClass<"Cpu0", [i32], 32, (add PC, EPC)>;
-
-def GPROut : RegisterClass<"Cpu0", [i32], 32, (add (sub CPURegs, SW))>;

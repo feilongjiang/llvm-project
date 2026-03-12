@@ -9,13 +9,8 @@
 //===----------------------------------------------------------------------===//
 
 //===----------------------------------------------------------------------===//
-// Target-independent interfaces
+// Calling Conv, Instruction Descriptions
 //===----------------------------------------------------------------------===//
-
-include "llvm/Target/Target.td"
-
-// Register Information
-include "Cpu0RegisterInfo.td"
 
 // Calling Convention
 include "Cpu0Schedule.td"
@@ -31,7 +26,6 @@ include "Cpu0CallingConv.td"
 //===----------------------------------------------------------------------===//
 // Cpu0 Subtarget features                                                    //
 //===----------------------------------------------------------------------===//
-
 
 def FeatureCmp          : SubtargetFeature<"cmp", "HasCmp", "true",
                                            "Enable 'cmp' instructions.">;

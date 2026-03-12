@@ -20,8 +20,12 @@
 namespace llvm {
 class Cpu0TargetMachine;
 class FunctionPass;
-} // namespace llvm
 
 #define ENABLE_GPRESSTORE // The $gp register caller saved register enable
+
+FunctionPass *createCpu0DelJmpPass(Cpu0TargetMachine &TM);
+FunctionPass *createCpu0DelaySlotFillerPass(Cpu0TargetMachine &TM);
+FunctionPass *createCpu0BranchExpansionPass(Cpu0TargetMachine &TM);
+} // namespace llvm
 
 #endif

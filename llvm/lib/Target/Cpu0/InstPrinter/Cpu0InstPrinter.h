@@ -45,6 +45,10 @@ public:
 private:
   void printOperand(const MCInst *MI, unsigned OpNo, const MCSubtargetInfo &STI,
                     raw_ostream &O);
+  void printOperand(const MCInst *MI, uint64_t /*Address*/, unsigned OpNo,
+                    const MCSubtargetInfo &STI, raw_ostream &O) {
+    printOperand(MI, OpNo, STI, O);
+  }
   void printUnsignedImm(const MCInst *MI, unsigned OpNo,
                         const MCSubtargetInfo &STI, raw_ostream &O);
   void printMemOperand(const MCInst *MI, unsigned OpNo,

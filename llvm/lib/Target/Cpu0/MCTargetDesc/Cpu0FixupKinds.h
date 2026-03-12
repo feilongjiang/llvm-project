@@ -38,6 +38,13 @@ enum Fixups {
   // Symbol fixup resulting in - R_CPU0_GOT16.
   fixup_Cpu0_GOT,
 
+  // PC relative branch fixup resulting in - R_CPU0_PC16.
+  // cpu0 PC16, e.g. beq
+  fixup_Cpu0_PC16,
+
+  // PC relative branch fixup resulting in - R_CPU0_PC24.
+  fixup_Cpu0_PC24,
+
   fixup_Cpu0_GOT_HI16,
 
   fixup_Cpu0_GOT_LO16,

@@ -54,6 +54,27 @@ public:
                                  SmallVectorImpl<MCFixup> &Fixups,
                                  const MCSubtargetInfo &STI) const;
 
+  // Return binary encoding of the branch target operand,
+  // such as BEQ, BNE. IF the machine operand requires
+  // relocation, record the relocation and return zero.
+  unsigned getBranch16TargetOpValue(const MCInst &MI, unsigned OpNo,
+                                    SmallVectorImpl<MCFixup> &Fixups,
+                                    const MCSubtargetInfo &STI) const;
+
+  // Return binary encoding of the branch target oeprand, such as
+  // JMP #BB01, JEQ, JSUB. If the machine operand requires relocation,
+  // record the relocation and return zero.
+  unsigned getBranch24TargetOpValue(const MCInst &MI, unsigned OpNo,
+                                    SmallVectorImpl<MCFixup> &Fixups,
+                                    const MCSubtargetInfo &STI) const;
+
+  // Return binary encoding of the jump target operand, such as
+  // JSUB #function_addr. IF the machine operand requires relocation,
+  // record the relocation and return zero.
+  unsigned getJumpTargetOpValue(const MCInst &MI, unsigned OpNo,
+                                SmallVectorImpl<MCFixup> &Fixups,
+                                const MCSubtargetInfo &STI) const;
+
   // Return binary encoding of operand. If the machine operand requires
   // relocation, record the relocation and return zero.
   unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,

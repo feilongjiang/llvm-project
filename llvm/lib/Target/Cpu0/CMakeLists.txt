@@ -1,6 +1,6 @@
 add_llvm_component_group(Cpu0)
 
-set (LLVM_TARGET_DEFINITIONS Cpu0.td)
+set (LLVM_TARGET_DEFINITIONS Cpu0Other.td)
 
 # Generate Cpu0GenRegisterInfo.inc and Cpu0GenInstrInfo.inc which included by
 #  your hand code C++ files.
@@ -37,6 +37,9 @@ add_llvm_target(Cpu0CodeGen
   Cpu0ISelDAGToDAG.cpp
   Cpu0SEISelDAGToDAG.cpp
   Cpu0AnalyzeImmediate.cpp
+  Cpu0BranchExpansion.cpp
+  Cpu0DelaySlotFiller.cpp
+  Cpu0DelUselessJMP.cpp
 
   LINK_COMPONENTS
   AsmPrinter
