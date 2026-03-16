@@ -40,6 +40,7 @@ add_llvm_target(Cpu0CodeGen
   Cpu0BranchExpansion.cpp
   Cpu0DelaySlotFiller.cpp
   Cpu0DelUselessJMP.cpp
+  Cpu0EmitGPRestore.cpp
 
   LINK_COMPONENTS
   AsmPrinter

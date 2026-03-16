@@ -13,6 +13,7 @@
 #ifndef LLVM_LIB_TARGET_CPU0_CPU0MACHINEFUNCTION_H
 #define LLVM_LIB_TARGET_CPU0_CPU0MACHINEFUNCTION_H
 
+#include "Cpu0.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineMemOperand.h"
@@ -28,10 +29,30 @@ class Cpu0FunctionInfo : public MachineFunctionInfo {
 public:
   Cpu0FunctionInfo(MachineFunction &MF)
       : MF(MF), VarArgsFrameIndex(0), SRetReturnReg(0), CallsEhReturn(false),
-        CallsEhDwarf(false), GlobalBaseReg(0), GPFI(0), MaxCallFrameSize(0),
-        EmitNOAT(false) {}
+        CallsEhDwarf(false), GlobalBaseReg(0),
+        InArgFIRange(std::make_pair(-1, 0)),
+        OutArgFIRange(std::make_pair(-1, 0)), GPFI(0), DynAllocFI(0),
+        MaxCallFrameSize(0), EmitNOAT(false) {}
 
   ~Cpu0FunctionInfo() override;
+
+  bool isInArgFI(int FI) const {
+    return FI <= InArgFIRange.first && FI >= InArgFIRange.second;
+  }
+  void setLastInArgFI(int FI) { InArgFIRange.second = FI; }
+  bool isOutArgFI(int FI) const {
+    return FI <= OutArgFIRange.first && FI >= OutArgFIRange.second;
+  }
+
+  int getGPFI() const { return GPFI; }
+  void setGPFI(int FI) { GPFI = FI; }
+  bool isGPFI(int FI) const { return GPFI && GPFI == FI; }
+
+#ifdef ENABLE_GPRESTORE
+  bool needGPSaveRestore() const { return getGPFI(); }
+#endif
+
+  bool isDynAllocFI(int FI) { return DynAllocFI && DynAllocFI == FI; }
 
   int getVarArgsFrameIndex() const { return VarArgsFrameIndex; }
   void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
@@ -66,6 +87,14 @@ public:
   bool globalBaseRegSet() const;
   unsigned getGlobalBaseReg();
 
+  /// Create a MachinePointerInfo that has an ExternalSymbolPseudoSourceValue
+  /// object representing a GOT entry for an external function.
+  MachinePointerInfo callPtrInfo(const char *ES);
+
+  /// Create a MachinePointerInfo that has a GlobalValuePseudoSourceValue object
+  /// representing a GOT entry for a global function.
+  MachinePointerInfo callPtrInfo(const GlobalValue *GV);
+
 private:
   virtual void anchor();
 
@@ -99,7 +128,16 @@ private:
   // relocation models.
   unsigned GlobalBaseReg;
 
+  // Range of frame object indices.
+  // InArgFIRange: Range of indices of all frame objects created during call to
+  //               LowerFormalArguments.
+  // OutArgFIRange: Range of indices of all frame objects created during call to
+  //                LowerCall except for the frame object for restoring $gp.
+  std::pair<int, int> InArgFIRange, OutArgFIRange;
+
   int GPFI; // Index of the frame object for restoring $gp
+
+  mutable int DynAllocFI; // Frame index of dynamically allocated stack area.
 
   unsigned MaxCallFrameSize;
 

@@ -17,11 +17,44 @@
 
 def SDT_Cpu0Ret : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
 
+def SDT_Cpu0JmpLink : SDTypeProfile<0, 1, [SDTCisVT<0, iPTR>]>;
+
+def SDT_Cpu0CallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>]>;
+def SDT_Cpu0CallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
+
+// Exception handling related node and instructions.
+// The conversion sequence is:
+// ISD::EH_RETURN -> Cpu0ISD::EH_RETURN ->
+// CPU0eh_return -> (stack change + indirect branch)
+//
+// CPU0eh_return takes the place of regular return instruction
+// but takes two arguments (V1, V0) which are used for storing
+// the offset and return address respectively.
+def SDT_Cpu0EHRET : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisPtrTy<1>]>;
+
 def SDT_Cpu0DivRem : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisSameAs<0, 1>]>;
 
 // Return
 def Cpu0Ret : SDNode<"Cpu0ISD::Ret", SDTNone,
                      [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+// Call
+def Cpu0JmpLink : SDNode<"Cpu0ISD::JmpLink", SDT_Cpu0JmpLink,
+                         [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue,
+                          SDNPVariadic]>;
+
+// Tail Call
+def Cpu0TailCall : SDNode<"Cpu0ISD::TailCall", SDT_Cpu0JmpLink,
+                          [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+// These are target-independent nodes, but have target-specific formats.
+def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_Cpu0CallSeqStart,
+                           [SDNPHasChain, SDNPOutGlue]>;
+def callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_Cpu0CallSeqEnd,
+                           [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+
+def CPU0ehret : SDNode<"Cpu0ISD::EH_RETURN", SDT_Cpu0EHRET,
+                       [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
 // DivRem(u)
 def Cpu0DivRem  : SDNode<"Cpu0ISD::DivRem",  SDT_Cpu0DivRem, [SDNPOutGlue]>;
@@ -75,6 +108,12 @@ def brtarget24 : Operand<OtherVT> {
 
 // JMP
 def jmptarget : Operand<OtherVT> {
+  let EncoderMethod = "getJumpTargetOpValue";
+  let OperandType = "OPERAND_PCREL";
+}
+
+// JSUB (call target)
+def calltarget : Operand<iPTR> {
   let EncoderMethod = "getJumpTargetOpValue";
   let OperandType = "OPERAND_PCREL";
 }
@@ -412,6 +451,36 @@ class RetBase<RegisterClass regClass> : JumpFR<0x3c, "ret", regClass> {
   let hasExtraSrcRegAllocReq = 1;
 }
 
+// Jump and Link (Call)
+let isCall=1, hasDelaySlot=1 in {
+  class JumpLink<bits<8> op, string instrAsm>
+    : FJ<op, (outs), (ins calltarget:$target, variable_ops),
+         !strconcat(instrAsm, "\t$target"), [(Cpu0JmpLink imm:$target)],
+         IIBranch> {
+    let DecoderMethod = "DecodeJumpTarget";
+  }
+
+  class JumpLinkReg<bits<8> op, string instrAsm, RegisterClass RC>
+    : FA<op, (outs), (ins RC:$rb, variable_ops),
+         !strconcat(instrAsm, "\t$rb"), [(Cpu0JmpLink RC:$rb)], IIBranch> {
+    let rc = 0;
+    let ra = 14;
+    let shamt = 0;
+  }
+}
+
+// TailCall
+let isCall = 1, isTerminator = 1, isReturn = 1, isBarrier = 1, hasDelaySlot = 1,
+    hasExtraSrcRegAllocReq = 1, Defs = [AT] in {
+  class TailCall<Instruction JumpInst>
+    : PseudoSE<(outs), (ins calltarget:$target), [], IIBranch>,
+      PseudoInstExpansion<(JumpInst jmptarget:$target)>;
+
+  class TailCallReg<RegisterClass RO, Instruction JRInst, RegisterClass ResRO = RO>
+    : PseudoSE<(outs), (ins RO:$rs), [(Cpu0TailCall RO:$rs)], IIBranch>,
+      PseudoInstExpansion<(JRInst ResRO:$rs)>;
+}
+
 // Count Leading Zeros/Ones
 class CountLeading0<bits<8> op, string instr_asm, RegisterClass RC>
   : FA<op, (outs GPROut:$ra), (ins RC:$rb),
@@ -435,6 +504,25 @@ class EffectiveAddress<string instr_asm, RegisterClass RC, Operand Mem>
 
 class Cpu0InstAlias<string Asm, dag Result, bit Emit = 0b1>
   : InstAlias<Asm, Result, Emit>;
+
+class IsTailCall {
+  bit isCall = 1;
+  bit isTerminator = 1;
+  bit isReturn = 1;
+  bit isBarrier = 1;
+  bit hasExtraSrcRegAllocReq = 1;
+  bit isCodeGenOnly = 1;
+}
+
+class IntrinArithLogicR<bits<8> op, string instr_asm, SDPatternOperator OpNode,
+                        InstrItinClass itin, RegisterClass RC, bit isComm = 0>
+ : FA<op, (outs GPROut:$ra), (ins RC:$rb, RC:$rc),
+     !strconcat(instr_asm, "\t$ra, $rb, $rc"),
+     [(set GPROut:$ra, (OpNode RC:$rb, RC:$rc))], itin> {
+  let shamt = 0;
+  let isCommutable = isComm;	// e.g. add rb rc =  add rc rb
+  let isReMaterializable = 1;
+}
 
 //===----------------------------------------------------------------------===//
 // Instruction definition
@@ -551,15 +639,23 @@ def JMP     : UncondBranch<0x36, "jmp">;
 
 // Long Branch Instructions
 let isBranch = 1, isTerminator = 1, isBarrier = 1, hasDelaySlot = 0, Defs = [LR] in
-def BAL     : FJ<0x3A, (outs), (ins jmptarget:$addr),
+def BAL     : FJ<0x3a, (outs), (ins jmptarget:$addr),
                  "bal\t$addr", [], IIBranch>, Requires<[HasSlt]>;
 
+// Jump & link and Return Instructions
+def JSUB    : JumpLink<0x3b, "jsub">;
+
 def JR      : JumpFR<0x3c, "jr", GPROut>;
+
+def JALR    : JumpLinkReg<0x39, "jalr", GPROut>;
 
 def RET     : RetBase<GPROut>;
 
 let isReturn=1, isTerminator=1, hasDelaySlot=1, isBarrier=1, hasCtrlDep=1 in
   def RetLR : Cpu0Pseudo<(outs), (ins), "", [(Cpu0Ret)]>;
+
+def TAILCALL   : TailCall<JMP>;
+def TAILCALL_R : TailCallReg<GPROut, JR>;
 
 // We nned these two pseudo instructions to avoid offset calculation for long
 // branches. See the comment in file Cpu0LongBranch.cpp for detailed explanation.
@@ -571,6 +667,13 @@ def LONG_BRANCH_LUi
 // Expand to: addiu $dst, $src, $lo($trg - $baltgt)
 def LONG_BRANCH_ADDiu
   : Cpu0Pseudo<(outs GPROut:$dst), (ins GPROut:$src, jmptarget:$tgt, jmptarget:$baltgt), "", []>;
+
+let Uses = [V0, V1], isTerminator = 1, isReturn = 1, isBarrier = 1 in {
+  def CPU0eh_return32 : Cpu0Pseudo<(outs), (ins GPROut:$spoff, GPROut:$dst), "",
+                                   [(CPU0ehret GPROut:$spoff, GPROut:$dst)]>;
+}
+
+def GCD : IntrinArithLogicR<0x60, "gcd", int_cpu0_gcd, IIAlu, CPURegs, 1>;
 
 // No Operation Instructions
 let addr=0 in
@@ -734,6 +837,7 @@ class WrapperPat<SDNode node, Instruction ORiOp, RegisterClass RC>
         (ORiOp RC:$gp, node:$in)>;
 def : WrapperPat<tglobaladdr, ORi, GPROut>;
 def : WrapperPat<tjumptable, ORi, GPROut>;
+def : WrapperPat<texternalsym, ORi, GPROut>;
 
 // brcond patterns
 multiclass BrcondPatsCmp<RegisterClass RC,  Instruction JEQOp, Instruction JNEOp,
@@ -814,6 +918,18 @@ let Predicates = [HasCmp] in {
   defm : BrcondPatsCmp<CPURegs, JEQ, JNE, JLT, JGT, JLE, JGE, CMP, CMPu, ZERO>;
 }
 
+// call patterns
+def : Pat<(Cpu0JmpLink (i32 tglobaladdr:$dst)),
+          (JSUB tglobaladdr:$dst)>;
+def : Pat<(Cpu0JmpLink (i32 texternalsym:$dst)),
+          (JSUB texternalsym:$dst)>;
+
+// tail call
+def : Pat<(Cpu0TailCall (iPTR tglobaladdr:$dst)),
+          (TAILCALL tglobaladdr:$dst)>;
+def : Pat<(Cpu0TailCall (iPTR texternalsym:$dst)),
+          (TAILCALL texternalsym:$dst)>;
+
 //===----------------------------------------------------------------------===//
 // Instruction aliases
 //===----------------------------------------------------------------------===//
@@ -824,3 +940,25 @@ def : Cpu0InstAlias<"move $dst, $src", (ADDu GPROut:$dst, GPROut:$src, ZERO), 1>
 // Conditional Moves
 //===----------------------------------------------------------------------===//
 include "Cpu0CondMov.td"
+
+//===----------------------------------------------------------------------===//
+// Pseudo instructions
+//===----------------------------------------------------------------------===//
+
+// As stack alignment is always done with addiu, we need a 16-bit immediate
+let Defs = [SP], Uses = [SP] in {
+  def ADJCALLSTACKDOWN : Cpu0Pseudo<(outs), (ins uimm16:$amt1, uimm16:$amt2),
+                                    "!ADJCALLSTACKDOWN $amt1",
+                                    [(callseq_start timm:$amt1, timm:$amt2)]>;
+  def ADJCALLSTACKUP   : Cpu0Pseudo<(outs), (ins uimm16:$amt1, uimm16:$amt2),
+                                    "!ADJCALLSTACKUP $amt1",
+                                    [(callseq_end timm:$amt1, timm:$amt2)]>;
+}
+
+// When handling PIC code the assembler needs .cpload and .cprestore
+// directives. IF the real instructions corresponding these directives
+// are used, we have teh same behavior, but get also a bunch of warnings
+// from the assembler.
+let hasSideEffects = 0 in
+def CPRESTORE : Cpu0Pseudo<(outs), (ins i32imm:$loc, CPURegs:$gp),
+                           ".cprestore\t$loc", []>;

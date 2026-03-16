@@ -9,6 +9,7 @@
 #ifndef LLVM_LIB_TARGET_CPU0_CPU0MCINSTLOWER_H
 #define LLVM_LIB_TARGET_CPU0_CPU0MCINSTLOWER_H
 
+#include "Cpu0.h"
 #include "MCTargetDesc/Cpu0MCExpr.h"
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/Support/Compiler.h"
@@ -37,6 +38,9 @@ public:
   void Lower(const MachineInstr *MI, MCInst &OutMI) const;
   MCOperand LowerOperand(const MachineOperand &MO, int64_t offset = 0) const;
   void LowerCPLOAD(SmallVector<MCInst, 4> &MCInsts);
+#ifdef ENABLE_GPRESTORE
+  void LowerCPRESTORE(int64_t Offset, SmallVector<MCInst, 4> &MCInsts);
+#endif
 
 private:
   MCOperand LowerSymbolOperand(const MachineOperand &MO,

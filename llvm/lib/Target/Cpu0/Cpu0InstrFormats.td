@@ -129,3 +129,9 @@ class Cpu0Pseudo<dag outs, dag ins, string asmStr, list<dag> pattern>
   let isCodeGenOnly = 1;
   let isPseudo = 1;
 }
+
+// Cpu032 Pseudo Instruction Format
+class PseudoSE<dag outs, dag ins, list<dag> pattern,
+               InstrItinClass itin = IIPseudo>
+  : Cpu0Pseudo<outs, ins, "", pattern> {
+}

@@ -32,6 +32,10 @@ public:
   static const Cpu0FrameLowering *create(const Cpu0Subtarget &ST);
 
   bool hasFP(const MachineFunction &MF) const override;
+
+  MachineBasicBlock::iterator
+  eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
+                                MachineBasicBlock::iterator I) const override;
 };
 
 /// Create Cpu0FrameLowering objects.

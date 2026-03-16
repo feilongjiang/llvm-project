@@ -41,6 +41,9 @@ bool Cpu0SEInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   case Cpu0::RetLR:
     expandRetLR(MBB, MI);
     break;
+  case Cpu0::CPU0eh_return32:
+    expandEhReturn(MBB, MI);
+    break;
   }
 
   MBB.erase(MI);
@@ -50,6 +53,35 @@ bool Cpu0SEInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
 void Cpu0SEInstrInfo::expandRetLR(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I) const {
   BuildMI(MBB, I, I->getDebugLoc(), get(Cpu0::RET)).addReg(Cpu0::LR);
+}
+
+void Cpu0SEInstrInfo::expandEhReturn(MachineBasicBlock &MBB,
+                                     MachineBasicBlock::iterator I) const {
+  // This pseudo instruction is generated as part of the lowering of
+  // ISD::EH_RETURN. We convert it to a stack increment by OffsetReg, and
+  // indirect jump to TargetReg
+  unsigned ADDU = Cpu0::ADDu;
+  unsigned SP = Cpu0::SP;
+  unsigned LR = Cpu0::LR;
+  unsigned T9 = Cpu0::T9;
+  unsigned ZERO = Cpu0::ZERO;
+  unsigned OffsetReg = I->getOperand(0).getReg();
+  unsigned TargetReg = I->getOperand(1).getReg();
+
+  // addu $lr, $v0, $zero
+  // addu $sp, $sp, $v1
+  // jr   $lr (via RetLR)
+  const TargetMachine &TM = MBB.getParent()->getTarget();
+  if (TM.isPositionIndependent()) {
+    BuildMI(MBB, I, I->getDebugLoc(), get(ADDU), T9)
+        .addReg(TargetReg)
+        .addReg(ZERO);
+  }
+  BuildMI(MBB, I, I->getDebugLoc(), get(ADDU), LR)
+      .addReg(TargetReg)
+      .addReg(ZERO);
+  BuildMI(MBB, I, I->getDebugLoc(), get(ADDU), SP).addReg(SP).addReg(OffsetReg);
+  expandRetLR(MBB, I);
 }
 
 // Return the inverse of the specified

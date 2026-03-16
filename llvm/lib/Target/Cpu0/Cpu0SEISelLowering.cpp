@@ -47,6 +47,22 @@ SDValue Cpu0SETargetLowering::LowerOperation(SDValue Op,
   return Cpu0TargetLowering::LowerOperation(Op, DAG);
 }
 
+bool Cpu0SETargetLowering::isEligibleForTailCallOptimization(
+    const Cpu0CC &Cpu0CCInfo, unsigned NextStackOffset,
+    const Cpu0FunctionInfo &FI) const {
+  if (!EnableCpu0TailCalls) {
+    return false;
+  }
+
+  // Return false if either the callee or caller has a byval argument.
+  if (Cpu0CCInfo.hasByValArg() || FI.hasByvalArg()) {
+    return false;
+  }
+
+  // Return true if the callee's argument area is no larger than the caller's.
+  return NextStackOffset <= FI.getIncomingArgSize();
+}
+
 const Cpu0TargetLowering *
 llvm::createCpu0SETargetLowering(const Cpu0TargetMachine &TM,
                                  const Cpu0Subtarget &STI) {

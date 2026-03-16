@@ -141,7 +141,7 @@ Cpu0MCCodeEmitter::getJumpTargetOpValue(const MCInst &MI, unsigned OpNo,
   assert(MO.isExpr() && "getJumpTargetOpValue expects only expressions");
 
   const MCExpr *Expr = MO.getExpr();
-  if (Opcode == Cpu0::JMP || Opcode == Cpu0::BAL) {
+  if (Opcode == Cpu0::JMP || Opcode == Cpu0::BAL || Opcode == Cpu0::JSUB) {
     Fixups.push_back(
         MCFixup::create(0, Expr, MCFixupKind(Cpu0::fixup_Cpu0_PC24)));
   } else {
@@ -173,6 +173,27 @@ unsigned Cpu0MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
     switch (Cpu0Expr->getKind()) {
     default:
       llvm_unreachable("Unsupported fixup kind for target expression!");
+    case Cpu0MCExpr::CEK_GPREL:
+      FixupKind = Cpu0::fixup_Cpu0_GPREL16;
+      break;
+    case Cpu0MCExpr::CEK_GOT_CALL:
+      FixupKind = Cpu0::fixup_Cpu0_CALL16;
+      break;
+    case Cpu0MCExpr::CEK_GOT:
+      FixupKind = Cpu0::fixup_Cpu0_GOT;
+      break;
+    case Cpu0MCExpr::CEK_ABS_HI:
+      FixupKind = Cpu0::fixup_Cpu0_HI16;
+      break;
+    case Cpu0MCExpr::CEK_ABS_LO:
+      FixupKind = Cpu0::fixup_Cpu0_LO16;
+      break;
+    case Cpu0MCExpr::CEK_GOT_HI16:
+      FixupKind = Cpu0::fixup_Cpu0_GOT_HI16;
+      break;
+    case Cpu0MCExpr::CEK_GOT_LO16:
+      FixupKind = Cpu0::fixup_Cpu0_GOT_LO16;
+      break;
     }
     Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(FixupKind)));
     return 0;

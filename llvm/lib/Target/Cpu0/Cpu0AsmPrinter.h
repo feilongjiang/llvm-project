@@ -13,6 +13,7 @@
 #ifndef LLVM_LIB_TARGET_CPU0_CPU0ASMPRINTER_H
 #define LLVM_LIB_TARGET_CPU0_CPU0ASMPRINTER_H
 
+#include "Cpu0.h"
 #include "Cpu0MCInstLower.h"
 #include "Cpu0MachineFunction.h"
 #include "Cpu0Subtarget.h"
@@ -35,6 +36,14 @@ class LLVM_LIBRARY_VISIBILITY Cpu0AsmPrinter : public AsmPrinter {
   void EmitInstrWithMacroNoAT(const MachineInstr *MI);
 
 private:
+  // tblgen'erated function.
+  bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
+                                   const MachineInstr *MI);
+
+#ifdef ENABLE_GPRESTORE
+  void emitPseudoCPRestore(MCStreamer &OutStreamer, const MachineInstr *MI);
+#endif
+
   // lowerOperand - Convert a MachineOperand into the equivalent MCOperand.
   bool lowerOperand(const MachineOperand &MO, MCOperand &MCOp);
 
