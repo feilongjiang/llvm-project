@@ -408,6 +408,7 @@ class JumpFR<bits<8> op, string instrAsm, RegisterClass regClass>
        !strconcat(instrAsm, "\t$ra"), [(brind regClass:$ra)], IIBranch> {
   let rb    = 0;
   let imm16 = 0;
+  let DecoderMethod = "DecodeJumpFR";
 }
 
 // Unconditional Branch, such as JMP

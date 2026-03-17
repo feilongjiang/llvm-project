@@ -15,6 +15,7 @@ tablegen(LLVM Cpu0GenCallingConv.inc -gen-callingconv)
 tablegen(LLVM Cpu0GenCodeEmitter.inc -gen-emitter)
 tablegen(LLVM Cpu0GenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM Cpu0GenAsmWriter.inc -gen-asm-writer)
+tablegen(LLVM Cpu0GenDisassemblerTables.inc -gen-disassembler)
 
 # Cpu0CommonTableGen must be defined
 add_public_tablegen_target(Cpu0CommonTableGen)
@@ -50,6 +51,7 @@ add_llvm_target(Cpu0CodeGen
   Cpu0Desc
   Cpu0Info
   Cpu0AsmPrinter
+  Cpu0Disassembler
   SelectionDAG
   Support
   Target
@@ -61,3 +63,4 @@ add_llvm_target(Cpu0CodeGen
 add_subdirectory(TargetInfo)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(InstPrinter)
+add_subdirectory(Disassembler)
