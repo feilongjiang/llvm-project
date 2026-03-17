@@ -34,6 +34,8 @@ def SDT_Cpu0EHRET : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisPtrTy<1>]>;
 
 def SDT_Cpu0DivRem : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisSameAs<0, 1>]>;
 
+def SDT_Sync             : SDTypeProfile<0, 1, [SDTCisVT<0, i32>]>;
+
 // Return
 def Cpu0Ret : SDNode<"Cpu0ISD::Ret", SDTNone,
                      [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
@@ -68,6 +70,14 @@ def Cpu0Lo      : SDNode<"Cpu0ISD::Lo",      SDTIntUnaryOp>;
 def Cpu0GPRel   : SDNode<"Cpu0ISD::GPRel",   SDTIntUnaryOp>;
 
 def Cpu0Wrapper : SDNode<"Cpu0ISD::Wrapper", SDTIntBinOp>;
+
+// TLS SDNodes
+def Cpu0TlsGd : SDNode<"Cpu0ISD::TlsGd", SDTIntUnaryOp>;
+def Cpu0TpHi  : SDNode<"Cpu0ISD::TpHi", SDTIntUnaryOp>;
+def Cpu0TpLo  : SDNode<"Cpu0ISD::TpLo", SDTIntUnaryOp>;
+
+// Sync SDNode
+def Cpu0Sync : SDNode<"Cpu0ISD::Sync", SDT_Sync, [SDNPHasChain]>;
 
 //===----------------------------------------------------------------------===//
 // Cpu0 Instruction Predicate Definitions
@@ -147,6 +157,11 @@ def mem_ea : Operand<iPTR> {
   let PrintMethod = "printMemOperandEA";
   let MIOperandInfo = (ops GPROut, simm16);
   let EncoderMethod = "getMemEncoding";
+}
+
+def PtrRC : Operand<iPTR> {
+  let MIOperandInfo = (ops ptr_rc);
+  let DecoderMethod = "DecodeCPURegsRegisterClass";
 }
 
 // Node immediate fits as 16-bit sign extended on target immediate.
@@ -531,6 +546,29 @@ class IntrinArithLogicR<bits<8> op, string instr_asm, SDPatternOperator OpNode,
   let isReMaterializable = 1;
 }
 
+// Atomic pseudo-instruction classes
+class Atomic2Ops<PatFrag Op, RegisterClass DRC> :
+  PseudoSE<(outs DRC:$dst), (ins PtrRC:$ptr, DRC:$incr),
+           [(set DRC:$dst, (Op iPTR:$ptr, DRC:$incr))]>;
+
+class AtomicCmpSwap<PatFrag Op, RegisterClass DRC> :
+  PseudoSE<(outs DRC:$dst), (ins PtrRC:$ptr, DRC:$cmp, DRC:$swap),
+           [(set DRC:$dst, (Op iPTR:$ptr, DRC:$cmp, DRC:$swap))]>;
+
+// Load-Linked / Store-Conditional
+class LLBase<bits<8> Opc, string opstring, RegisterClass RC, Operand Mem> :
+  FMem<Opc, (outs RC:$ra), (ins Mem:$addr),
+       !strconcat(opstring, "\t$ra, $addr"), [], IILoad> {
+  let mayLoad = 1;
+}
+
+class SCBase<bits<8> Opc, string opstring, RegisterOperand RO, Operand Mem> :
+  FMem<Opc, (outs RO:$dst), (ins RO:$ra, Mem:$addr),
+       !strconcat(opstring, "\t$ra, $addr"), [], IIStore> {
+  let mayStore = 1;
+  let Constraints = "$ra = $dst";
+}
+
 //===----------------------------------------------------------------------===//
 // Instruction definition
 //===----------------------------------------------------------------------===//
@@ -680,7 +718,51 @@ let Uses = [V0, V1], isTerminator = 1, isReturn = 1, isBarrier = 1 in {
                                    [(CPU0ehret GPROut:$spoff, GPROut:$dst)]>;
 }
 
-def GCD : IntrinArithLogicR<0x60, "gcd", int_cpu0_gcd, IIAlu, CPURegs, 1>;
+def GCD : IntrinArithLogicR<0x63, "gcd", int_cpu0_gcd, IIAlu, CPURegs, 1>;
+
+// Sync instruction
+let hasSideEffects = 1 in
+def SYNC : Cpu0Inst<(outs), (ins i32imm:$stype), "sync $stype",
+                    [(Cpu0Sync imm:$stype)], NoItinerary, FrmOther>
+{
+  bits<5> stype;
+  let Opcode = 0x60;
+  let Inst{25-11} = 0;
+  let Inst{10-6} = stype;
+  let Inst{5-0} = 0;
+}
+
+// Load-Linked and Store-Conditional
+def LL      : LLBase<0x61, "ll", CPURegs, mem>;
+def SC      : SCBase<0x62, "sc", RegisterOperand<CPURegs>, mem>;
+
+// Atomic pseudo-instructions (expanded via EmitInstrWithCustomInserter)
+let usesCustomInserter = 1 in {
+  def ATOMIC_LOAD_ADD_I8   : Atomic2Ops<atomic_load_add_8, CPURegs>;
+  def ATOMIC_LOAD_ADD_I16  : Atomic2Ops<atomic_load_add_16, CPURegs>;
+  def ATOMIC_LOAD_ADD_I32  : Atomic2Ops<atomic_load_add_32, CPURegs>;
+  def ATOMIC_LOAD_SUB_I8   : Atomic2Ops<atomic_load_sub_8, CPURegs>;
+  def ATOMIC_LOAD_SUB_I16  : Atomic2Ops<atomic_load_sub_16, CPURegs>;
+  def ATOMIC_LOAD_SUB_I32  : Atomic2Ops<atomic_load_sub_32, CPURegs>;
+  def ATOMIC_LOAD_AND_I8   : Atomic2Ops<atomic_load_and_8, CPURegs>;
+  def ATOMIC_LOAD_AND_I16  : Atomic2Ops<atomic_load_and_16, CPURegs>;
+  def ATOMIC_LOAD_AND_I32  : Atomic2Ops<atomic_load_and_32, CPURegs>;
+  def ATOMIC_LOAD_OR_I8    : Atomic2Ops<atomic_load_or_8, CPURegs>;
+  def ATOMIC_LOAD_OR_I16   : Atomic2Ops<atomic_load_or_16, CPURegs>;
+  def ATOMIC_LOAD_OR_I32   : Atomic2Ops<atomic_load_or_32, CPURegs>;
+  def ATOMIC_LOAD_XOR_I8   : Atomic2Ops<atomic_load_xor_8, CPURegs>;
+  def ATOMIC_LOAD_XOR_I16  : Atomic2Ops<atomic_load_xor_16, CPURegs>;
+  def ATOMIC_LOAD_XOR_I32  : Atomic2Ops<atomic_load_xor_32, CPURegs>;
+  def ATOMIC_LOAD_NAND_I8  : Atomic2Ops<atomic_load_nand_8, CPURegs>;
+  def ATOMIC_LOAD_NAND_I16 : Atomic2Ops<atomic_load_nand_16, CPURegs>;
+  def ATOMIC_LOAD_NAND_I32 : Atomic2Ops<atomic_load_nand_32, CPURegs>;
+  def ATOMIC_SWAP_I8       : Atomic2Ops<atomic_swap_8, CPURegs>;
+  def ATOMIC_SWAP_I16      : Atomic2Ops<atomic_swap_16, CPURegs>;
+  def ATOMIC_SWAP_I32      : Atomic2Ops<atomic_swap_32, CPURegs>;
+  def ATOMIC_CMP_SWAP_I8   : AtomicCmpSwap<atomic_cmp_swap_8, CPURegs>;
+  def ATOMIC_CMP_SWAP_I16  : AtomicCmpSwap<atomic_cmp_swap_16, CPURegs>;
+  def ATOMIC_CMP_SWAP_I32  : AtomicCmpSwap<atomic_cmp_swap_32, CPURegs>;
+}
 
 // No Operation Instructions
 let addr=0 in
@@ -822,10 +904,12 @@ let Predicates = [HasCmp] in {
 def : Pat<(Cpu0Hi tglobaladdr:$in), (LUi tglobaladdr:$in)>;
 def : Pat<(Cpu0Hi tblockaddress:$in), (LUi tblockaddress:$in)>;
 def : Pat<(Cpu0Hi tjumptable:$in), (LUi tjumptable:$in)>;
+def : Pat<(Cpu0Hi tglobaltlsaddr:$in), (LUi tglobaltlsaddr:$in)>;
 
 def : Pat<(Cpu0Lo tglobaladdr:$in), (ORi ZERO, tglobaladdr:$in)>;
 def : Pat<(Cpu0Lo tblockaddress:$in), (ORi ZERO, tblockaddress:$in)>;
 def : Pat<(Cpu0Lo tjumptable:$in), (ORi ZERO, tjumptable:$in)>;
+def : Pat<(Cpu0Lo tglobaltlsaddr:$in), (ORi ZERO, tglobaltlsaddr:$in)>;
 
 def : Pat<(add CPURegs:$hi, (Cpu0Lo tglobaladdr:$lo)),
           (ORi CPURegs:$hi, tglobaladdr:$lo)>;
@@ -833,6 +917,8 @@ def : Pat<(add CPURegs:$hi, (Cpu0Lo tblockaddress:$lo)),
           (ORi CPURegs:$hi, tblockaddress:$lo)>;
 def : Pat<(add CPURegs:$hi, (Cpu0Lo tjumptable:$lo)),
           (ORi CPURegs:$hi, tjumptable:$lo)>;
+def : Pat<(add CPURegs:$hi, (Cpu0Lo tglobaltlsaddr:$lo)),
+              (ORi CPURegs:$hi, tglobaltlsaddr:$lo)>;
 
 // gp_rel relocs
 def : Pat<(add CPURegs:$gp, (Cpu0GPRel tglobaladdr:$in)),
@@ -845,6 +931,7 @@ class WrapperPat<SDNode node, Instruction ORiOp, RegisterClass RC>
 def : WrapperPat<tglobaladdr, ORi, GPROut>;
 def : WrapperPat<tjumptable, ORi, GPROut>;
 def : WrapperPat<texternalsym, ORi, GPROut>;
+def : WrapperPat<tglobaltlsaddr, ORi, CPURegs>;
 
 // brcond patterns
 multiclass BrcondPatsCmp<RegisterClass RC,  Instruction JEQOp, Instruction JNEOp,
@@ -942,6 +1029,7 @@ def : Pat<(Cpu0TailCall (iPTR texternalsym:$dst)),
 //===----------------------------------------------------------------------===//
 
 def : Cpu0InstAlias<"move $dst, $src", (ADDu GPROut:$dst, GPROut:$src, ZERO), 1>;
+def : Cpu0InstAlias<"sync", (SYNC 0), 1>;
 
 //===----------------------------------------------------------------------===//
 // Conditional Moves

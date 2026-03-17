@@ -153,6 +153,8 @@ public:
 
   bool addInstSelector() override;
 
+  void addIRPasses() override;
+
   void addPreEmitPass() override;
 
 #ifdef ENABLE_GPRESTORE
@@ -167,6 +169,11 @@ TargetPassConfig *Cpu0TargetMachine::createPassConfig(PassManagerBase &PM) {
 
 // Install an instruction selector pass using
 // the ISelDag to gen Cpu0 code.
+void Cpu0PassConfig::addIRPasses() {
+  TargetPassConfig::addIRPasses();
+  addPass(createAtomicExpandPass());
+}
+
 bool Cpu0PassConfig::addInstSelector() {
   addPass(createCpu0SEISelDag(getCpu0TargetMachine(), getOptLevel()));
   return false;

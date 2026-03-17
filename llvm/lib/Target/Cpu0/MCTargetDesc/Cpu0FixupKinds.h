@@ -52,6 +52,21 @@ enum Fixups {
 
   fixup_Cpu0_GOT_LO16,
 
+  // resulting in - R_CPU0_TLS_GD.
+  fixup_Cpu0_TLSGD,
+  // resulting in - R_CPU0_TLS_GOTTPREL.
+  fixup_Cpu0_GOTTPREL,
+  // resulting in - R_CPU0_TLS_TPREL_HI16.
+  fixup_Cpu0_TP_HI,
+  // resulting in - R_CPU0_TLS_TPREL_LO16.
+  fixup_Cpu0_TP_LO,
+  // resulting in - R_CPU0_TLS_LDM.
+  fixup_Cpu0_TLSLDM,
+  // resulting in - R_CPU0_TLS_DTP_HI16.
+  fixup_Cpu0_DTP_HI,
+  // resulting in - R_CPU0_TLS_DTP_LO16.
+  fixup_Cpu0_DTP_LO,
+
   // Marker
   LastTargetFixupKind,
   NumTargetFixupKinds = LastTargetFixupKind - FirstTargetFixupKind

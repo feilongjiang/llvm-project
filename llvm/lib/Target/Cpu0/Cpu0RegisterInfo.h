@@ -32,6 +32,10 @@ protected:
 public:
   Cpu0RegisterInfo(const Cpu0Subtarget &Subtarget);
 
+  /// Code Generation virtual methods...
+  const TargetRegisterClass *getPointerRegClass(const MachineFunction &MF,
+                                                unsigned Kind) const override;
+
   const MCPhysReg *getCalleeSavedRegs(const MachineFunction *MF) const override;
 
   const uint32_t *getCallPreservedMask(const MachineFunction &MF,

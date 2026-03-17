@@ -141,7 +141,14 @@ Cpu0AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
       {"fixup_Cpu0_PC24", 0, 24, JSUBReloRec},
       {"fixup_Cpu0_CALL16", 0, 16, 0},
       {"fixup_Cpu0_GOT_HI16", 0, 16, 0},
-      {"fixup_Cpu0_GOT_LO16", 0, 16, 0}};
+      {"fixup_Cpu0_GOT_LO16", 0, 16, 0},
+      {"fixup_Cpu0_TLSGD", 0, 16, 0},
+      {"fixup_Cpu0_GOTTP", 0, 16, 0},
+      {"fixup_Cpu0_TP_HI", 0, 16, 0},
+      {"fixup_Cpu0_TP_LO", 0, 16, 0},
+      {"fixup_Cpu0_TLSLDM", 0, 16, 0},
+      {"fixup_Cpu0_DTP_HI", 0, 16, 0},
+      {"fixup_Cpu0_DTP_LO", 0, 16, 0}};
 
   if (Kind < FirstTargetFixupKind) {
     return MCAsmBackend::getFixupKindInfo(Kind);

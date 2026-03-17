@@ -162,6 +162,27 @@ MCOperand Cpu0MCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   case Cpu0II::MO_GOT_LO16:
     TargetKind = Cpu0MCExpr::CEK_GOT_LO16;
     break;
+  case Cpu0II::MO_TLSGD:
+    TargetKind = Cpu0MCExpr::CEK_TLSGD;
+    break;
+  case Cpu0II::MO_TLSLDM:
+    TargetKind = Cpu0MCExpr::CEK_TLSLDM;
+    break;
+  case Cpu0II::MO_DTP_HI:
+    TargetKind = Cpu0MCExpr::CEK_DTP_HI;
+    break;
+  case Cpu0II::MO_DTP_LO:
+    TargetKind = Cpu0MCExpr::CEK_DTP_LO;
+    break;
+  case Cpu0II::MO_GOTTPREL:
+    TargetKind = Cpu0MCExpr::CEK_GOTTPREL;
+    break;
+  case Cpu0II::MO_TP_HI:
+    TargetKind = Cpu0MCExpr::CEK_TP_HI;
+    break;
+  case Cpu0II::MO_TP_LO:
+    TargetKind = Cpu0MCExpr::CEK_TP_LO;
+    break;
   }
 
   switch (MOTy) {

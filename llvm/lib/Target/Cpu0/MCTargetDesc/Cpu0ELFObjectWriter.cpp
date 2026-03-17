@@ -89,6 +89,27 @@ unsigned Cpu0ELFObjectWriter::getRelocType(MCContext &Ctx,
   case Cpu0::fixup_Cpu0_GOT_LO16:
     Type = ELF::R_CPU0_GOT_LO16;
     break;
+  case Cpu0::fixup_Cpu0_TLSGD:
+    Type = ELF::R_CPU0_TLS_GD;
+    break;
+  case Cpu0::fixup_Cpu0_GOTTPREL:
+    Type = ELF::R_CPU0_TLS_GOTTPREL;
+    break;
+  case Cpu0::fixup_Cpu0_TP_HI:
+    Type = ELF::R_CPU0_TLS_TPREL_HI16;
+    break;
+  case Cpu0::fixup_Cpu0_TP_LO:
+    Type = ELF::R_CPU0_TLS_TPREL_LO16;
+    break;
+  case Cpu0::fixup_Cpu0_TLSLDM:
+    Type = ELF::R_CPU0_TLS_LDM;
+    break;
+  case Cpu0::fixup_Cpu0_DTP_HI:
+    Type = ELF::R_CPU0_TLS_DTPREL_HI16;
+    break;
+  case Cpu0::fixup_Cpu0_DTP_LO:
+    Type = ELF::R_CPU0_TLS_DTPREL_LO16;
+    break;
   }
 
   return Type;

@@ -194,6 +194,27 @@ unsigned Cpu0MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
     case Cpu0MCExpr::CEK_GOT_LO16:
       FixupKind = Cpu0::fixup_Cpu0_GOT_LO16;
       break;
+    case Cpu0MCExpr::CEK_TLSGD:
+      FixupKind = Cpu0::fixup_Cpu0_TLSGD;
+      break;
+    case Cpu0MCExpr::CEK_TLSLDM:
+      FixupKind = Cpu0::fixup_Cpu0_TLSLDM;
+      break;
+    case Cpu0MCExpr::CEK_DTP_HI:
+      FixupKind = Cpu0::fixup_Cpu0_DTP_HI;
+      break;
+    case Cpu0MCExpr::CEK_DTP_LO:
+      FixupKind = Cpu0::fixup_Cpu0_DTP_LO;
+      break;
+    case Cpu0MCExpr::CEK_GOTTPREL:
+      FixupKind = Cpu0::fixup_Cpu0_GOTTPREL;
+      break;
+    case Cpu0MCExpr::CEK_TP_HI:
+      FixupKind = Cpu0::fixup_Cpu0_TP_HI;
+      break;
+    case Cpu0MCExpr::CEK_TP_LO:
+      FixupKind = Cpu0::fixup_Cpu0_TP_LO;
+      break;
     }
     Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(FixupKind)));
     return 0;

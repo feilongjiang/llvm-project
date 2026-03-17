@@ -55,6 +55,18 @@ enum TOF {
   /// MO_GOT_HI16/LO16 - Relocations used for large GOTs.
   MO_GOT_HI16,
   MO_GOT_LO16,
+
+  /// MO_TLSGD - General Dynamic TLS
+  MO_TLSGD,
+  /// MO_TLSLDM - Local Dynamic TLS
+  MO_TLSLDM,
+  MO_DTP_HI,
+  MO_DTP_LO,
+  /// MO_GOTTPREL - Initial Exec TLS
+  MO_GOTTPREL,
+  /// MO_TPREL_HI/LO - Local Exec TLS
+  MO_TP_HI,
+  MO_TP_LO,
 };
 
 enum {

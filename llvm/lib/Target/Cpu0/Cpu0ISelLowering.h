@@ -60,7 +60,11 @@ enum NodeType : unsigned {
   Wrapper,
   DynAlloc,
 
-  Sync
+  Sync,
+
+  TlsGd,
+  TpHi,
+  TpLo
 };
 
 } // namespace Cpu0ISD
@@ -82,11 +86,29 @@ public:
                                           const Cpu0Subtarget &STI);
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
 
+  MachineBasicBlock *
+  EmitInstrWithCustomInserter(MachineInstr &MI,
+                              MachineBasicBlock *MBB) const override;
+
   /// getTargetNodeName - This method returns the name of a target specific
   //  DAG node.
   const char *getTargetNodeName(unsigned Opcode) const override;
 
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
+
+  /// If a physical register, this returns the register that receives the
+  /// exception address on entry to an EH pad.
+  Register
+  getExceptionPointerRegister(const Constant *PersonalityFn) const override {
+    return Cpu0::A0;
+  }
+
+  /// If a physical register, this returns the register that receives the
+  /// exception typeid on entry to a landing pad.
+  Register
+  getExceptionSelectorRegister(const Constant *PersonalityFn) const override {
+    return Cpu0::A1;
+  }
 
   /// getSetCCResultType - get the ISD::SETCC result ValueType
   EVT getSetCCResultType(const DataLayout &DL, LLVMContext &Context,
@@ -302,6 +324,8 @@ private:
   SDValue lowerRETURNADDR(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerEH_RETURN(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerADD(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerGlobalTLSAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerATOMIC_FENCE(SDValue Op, SelectionDAG &DAG) const;
 
   // Check whether the call is eligible for tail call optimization.
   virtual bool
@@ -385,6 +409,28 @@ private:
   bool isLegalAddressingMode(const DataLayout &DL, const AddrMode &AM, Type *Ty,
                              unsigned AS,
                              Instruction *I = nullptr) const override;
+
+  bool shouldInsertFencesForAtomic(const Instruction *I) const override {
+    return true;
+  }
+
+  /// Emit a sign-extension using shl/sra appropriately.
+  MachineBasicBlock *emitSignExtendToI32InReg(MachineInstr &MI,
+                                              MachineBasicBlock *BB,
+                                              unsigned Size, unsigned DstReg,
+                                              unsigned SrcRec) const;
+  MachineBasicBlock *emitAtomicBinary(MachineInstr &MI, MachineBasicBlock *BB,
+                                      unsigned Size, unsigned BinOpcode,
+                                      bool Nand = false) const;
+  MachineBasicBlock *emitAtomicBinaryPartword(MachineInstr &MI,
+                                              MachineBasicBlock *BB,
+                                              unsigned Size, unsigned BinOpcode,
+                                              bool Nand = false) const;
+  MachineBasicBlock *emitAtomicCmpSwap(MachineInstr &MI, MachineBasicBlock *BB,
+                                       unsigned Size) const;
+  MachineBasicBlock *emitAtomicCmpSwapPartword(MachineInstr &MI,
+                                               MachineBasicBlock *BB,
+                                               unsigned Size) const;
 };
 const Cpu0TargetLowering *
 createCpu0SETargetLowering(const Cpu0TargetMachine &TM,

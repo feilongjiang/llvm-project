@@ -31,6 +31,12 @@ using namespace llvm;
 Cpu0RegisterInfo::Cpu0RegisterInfo(const Cpu0Subtarget &Subtarget)
     : Cpu0GenRegisterInfo(Cpu0::LR), Subtarget(Subtarget) {}
 
+const TargetRegisterClass *
+Cpu0RegisterInfo::getPointerRegClass(const MachineFunction &MF,
+                                     unsigned Kind) const {
+  return &Cpu0::CPURegsRegClass;
+}
+
 //===----------------------------------------------------------------------===//
 // Callee Saved Registers methods
 //===----------------------------------------------------------------------===//
