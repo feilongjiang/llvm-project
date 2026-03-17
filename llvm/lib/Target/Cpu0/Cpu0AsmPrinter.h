@@ -74,6 +74,11 @@ public:
   void emitFunctionBodyStart() override;
   void emitFunctionBodyEnd() override;
   void emitStartOfAsmFile(Module &M) override;
+  bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                       const char *ExtraCode, raw_ostream &O) override;
+  bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNum,
+                             const char *ExtraCode, raw_ostream &O) override;
+  void printOperand(const MachineInstr *MI, int opNum, raw_ostream &O);
   void PrintDebugValueComment(const MachineInstr *MI, raw_ostream &OS);
 };
 

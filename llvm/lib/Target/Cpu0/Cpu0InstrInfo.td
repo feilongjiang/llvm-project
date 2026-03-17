@@ -131,10 +131,16 @@ def uimm16 : Operand<i32> {
 }
 
 // Address Operand
+def Cpu0MemAsmOperand : AsmOperandClass {
+  let Name = "Mem";
+  let ParserMethod = "parseMemOperand";
+}
+
 def mem : Operand<iPTR> {
   let PrintMethod   = "printMemOperand";
   let MIOperandInfo = (ops CPURegs, simm16);
   let EncoderMethod = "getMemEncoding";
+  let ParserMatchClass = Cpu0MemAsmOperand;
 }
 
 def mem_ea : Operand<iPTR> {
@@ -963,3 +969,22 @@ let Defs = [SP], Uses = [SP] in {
 let hasSideEffects = 0 in
 def CPRESTORE : Cpu0Pseudo<(outs), (ins i32imm:$loc, CPURegs:$gp),
                            ".cprestore\t$loc", []>;
+
+//===----------------------------------------------------------------------===//
+// Asm Pseudo Instructions (for assembler only)
+//===----------------------------------------------------------------------===//
+
+class LoadImm32< string instr_asm, Operand Od, RegisterClass RC> :
+  Cpu0AsmPseudoInst<(outs RC:$ra), (ins Od:$imm32),
+                     !strconcat(instr_asm, "\t$ra, $imm32")> ;
+def LoadImm32Reg : LoadImm32<"li", shamt, GPROut>;
+
+class LoadAddress<string instr_asm, Operand MemOpnd, RegisterClass RC> :
+  Cpu0AsmPseudoInst<(outs RC:$ra), (ins MemOpnd:$addr),
+                     !strconcat(instr_asm, "\t$ra, $addr")> ;
+def LoadAddr32Reg : LoadAddress<"la", mem, GPROut>;
+
+class LoadAddressImm<string instr_asm, Operand Od, RegisterClass RC> :
+  Cpu0AsmPseudoInst<(outs RC:$ra), (ins Od:$imm32),
+                     !strconcat(instr_asm, "\t$ra, $imm32")> ;
+def LoadAddr32Imm : LoadAddressImm<"la", shamt, GPROut>;
