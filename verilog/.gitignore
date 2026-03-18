@@ -1,0 +1,15 @@
+# Compiled Verilog simulators
+cpu0Is
+cpu0IIs
+
+# Runtime files
+cpu0.hex
+cpu0.config
+
+# Build artifacts in input/
+input/*.bc
+input/*.o
+input/*.s
+input/*.S
+input/*.cpu0.*
+input/*.bin
